@@ -1,0 +1,29 @@
+# organoid v6.3 — Python dependencies
+# Install with: pip install -r requirements.txt
+# Python 3.10+ required
+
+# Core scientific stack
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+
+# NWB and DANDI
+pynwb>=2.3.0
+dandi>=0.60.0
+hdmf>=3.5.0
+
+# Graph theory
+networkx>=3.1
+
+# Database
+# sqlite3 is built into Python — no install needed
+
+# Optional: spike sorting (organoid_sorting.py)
+# spikeinterface>=0.98.0
+# Install separately if needed:
+# pip install spikeinterface
+
+# Optional: report generation (not required for analysis)
+# reportlab>=4.0.0
+# pypdf>=3.0.0
