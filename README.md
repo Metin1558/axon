@@ -1,138 +1,141 @@
-# organoid v6.3
+# Axon
 
-**An open-source electrophysiology analysis pipeline for NWB-formatted brain organoid recordings.**
+**MEA tabanlı organoid elektrofizyolojisi analiz pipeline'ı.**
 
-Developed independently. Validated on [DANDI:001603](https://dandiarchive.org/dandiset/001603) (van der Molen et al., *Nature Neuroscience* 2026) — 18 subjects, ~1,610 individual neurons across human organoids, mouse organoids, and ex vivo mouse cortical slices.
+NWB formatındaki beyin organoidi MEA kayıtlarını DANDI Archive'dan indirip uçtan uca analiz eder. Per-unit ateşleme hızı, CV, STTC senkronizasyon matrisleri, adaptif ağ burst tespiti, graph-teorik topoloji ölçütleri ve SpikeInterface ile spike sorting — tek CLI komutuyla.
 
----
-
-## What it does
-
-- **Per-unit analysis:** ISI statistics, CV, firing rate, refractory violation, Wilson score CI, ISI shuffle permutation (rhythmicity test)
-- **Network synchrony:** STTC cross-unit synchrony matrices (Cutts & Eglen 2014)
-- **Burst detection:** Adaptive MAD-threshold network burst detection
-- **Graph theory:** Clustering coefficient, mean path length, small-world index (NetworkX)
-- **Multi-session stability:** CV_session across recording sessions
-- **DANDI integration:** Search, download, and analyze any NWB subject in one command
-- **Raw signal fallback:** Interactive option for subjects without sorted units
+DANDI:001603 (van der Molen et al., Nature Neuroscience 2026) ve DANDI:001132 (Andrews et al.) üzerinde doğrulandı.
 
 ---
 
-## Installation
+## Dosya Yapısı
 
-```bash
-pip install pynwb dandi numpy scipy matplotlib pandas networkx
+```
+axon/
+├── KURULUM.py                  ← İlk kurulum (bir kez çalıştır)
+├── organoid_cli.py             ← Ana CLI: indir + analiz
+├── dandi_ara.py                ← DANDI dataset arama
+├── graph_analiz.py             ← Graph theory analizi (otomatik subject tespiti)
+├── gruplu_analiz.py            ← Grup karşılaştırması (otomatik gruplama)
+├── yas_metadata_cek.py         ← NWB metadata okuyucu
+├── si_sorting.py               ← SpikeInterface spike sorting modülü
+│
+└── v6_3/                       ← Analiz modülleri
+    ├── organoid_units_analiz.py ← Per-unit analiz + STTC + burst + plot
+    ├── organoid_io.py           ← NWB okuma, ham sinyal, RAM koruması
+    ├── organoid_signal.py       ← Bandpass + MAD spike detection
+    ├── organoid_metrics.py      ← ISI, CV, STTC hesapları
+    ├── organoid_qc.py           ← Refractory violation, Wilson CI, SNR
+    ├── organoid_burst_ref.py    ← Bakkum 2013 referans burst karşılaştırması
+    ├── organoid_replikasyon.py  ← Multi-session stabilite analizi
+    ├── organoid_compare.py      ← İki kayıt karşılaştırması
+    ├── organoid_plot.py         ← Görselleştirme modülü
+    └── organoid_types.py        ← Veri tipleri
 ```
 
-Python 3.10+ required.
+---
+
+## Kurulum
+
+```bash
+# 1. Repoyu klonla
+git clone https://github.com/metin/axon
+cd axon
+
+# 2. Kurulum (Python bağımlılıkları + SpikeInterface + algoritmalar)
+python KURULUM.py
+```
+
+**Gereksinimler:** Python 3.9+, internet bağlantısı
+
+**Otomatik kurulan paketler:**
+`dandi`, `pynwb`, `h5py`, `numpy`, `scipy`, `matplotlib`, `networkx`, `remfile`, `pandas`, `spikeinterface[full]`, `mountainsort5`, `tridesclous2`
 
 ---
 
-## Quick Start
+## Hızlı Başlangıç
 
 ```bash
-# Search DANDI for organoid datasets
+# DANDI dataset ara
 python dandi_ara.py organoid
 
-# List files in a specific dataset
+# Dataset içindeki dosyaları listele
 python dandi_ara.py --dataset 001603
 
-# Download and analyze a subject (sorted units mode)
+# Subject indir ve analiz et (sorted units)
 python organoid_cli.py 001603 sub-HO2
 
-# List available recordings for a subject
-python organoid_cli.py 001603 sub-HO2 --listele
+# Ham sinyal + SpikeInterface sorting
+python organoid_cli.py 001132 sub-5C-1 --max-mb 750
+# → Seçenek 2 → Algoritma seç (1: mountainsort5 önerilir)
 
-# Select a specific recording
-python organoid_cli.py 001603 sub-HO2 --kayit-sec 3
-
-# Run graph theory analysis on downloaded subjects
+# Graph theory analizi (sonuclar/ içindekilerden otomatik)
 python graph_analiz.py
-```
 
-Output files are saved to `sonuclar/<subject>/`:
-- `*_per_unit.csv` — per-neuron metrics
-- `*_ozet.csv` — organoid-level summary
-- `*_quicklook.png` — 4-panel visualization (raster, population rate, Hz histogram, STTC matrix)
+# Grup karşılaştırması
+python gruplu_analiz.py
 
----
-
-## Pipeline Architecture
-
-```
-organoid_cli.py          ← CLI entry point: DANDI search + download + analysis
-dandi_ara.py             ← DANDI-wide dataset and file search
-graph_analiz.py          ← Graph theory from STTC matrices
-gruplu_analiz.py         ← Multi-organoid group comparison
-yas_metadata_cek.py      ← Extract age metadata from NWB files
-
-v6_3/
-├── organoid_io.py       ← NWB reading, chunk management, RAM safety
-├── organoid_signal.py   ← Bandpass filter, MAD-threshold spike detection
-├── organoid_qc.py       ← SNR, refractory violation, Wilson CI
-├── organoid_metrics.py  ← ISI, CV, STTC, permutation test
-├── organoid_units_analiz.py  ← Per-unit analysis, STTC matrix, burst detection
-├── organoid_burst_ref.py     ← Bakkum 2013 reference burst comparison
-├── organoid_lfp.py      ← LFP band power analysis
-├── organoid_replikasyon.py   ← Multi-session stability
-├── organoid_compare.py  ← Two-recording statistical comparison
-├── organoid_db.py       ← SQLite + BLOB storage
-├── organoid_output.py   ← Console output, CSV writing
-├── organoid_plot.py     ← Quicklook PNG generation
-├── organoid_sorting.py  ← SpikeInterface integration (optional)
-└── organoid_types.py    ← Shared type definitions
+# Metadata özeti
+python yas_metadata_cek.py
 ```
 
 ---
 
-## Validation
+## Çıktılar
 
-15 synthetic tests — 100% pass rate. Key tests:
+Her analiz sonrası `sonuclar/<subject>/` içine:
 
-| Test | Expected | Result |
-|------|----------|--------|
-| Spike detection | 300 spikes ±30% | 250 (σ=5 threshold) |
-| ISI CV (Poisson) | 0.85–1.15 | 0.944 |
-| STTC (identical trains) | ≈1.0 | 1.000 |
-| STTC (independent) | ≈0.0 | −0.015 |
-| MAD robustness | std +50%, MAD <10% | std +403%, MAD +0.8% |
-| RAM safety | ValueError on overflow | 18 GB > 500 MB → caught |
+| Dosya | İçerik |
+|-------|--------|
+| `*_per_unit.csv` | Per-nöron metrikler: Hz, CV, STTC, refractory violation |
+| `*_ozet.csv` | Organoid özeti: n_unit, burst rate, medyan STTC |
+| `*_quicklook.png` | 4 panel: raster, population rate, Hz histogramı, STTC matrisi |
 
 ---
 
-## Applied to DANDI:001603
+## Desteklenen Algoritmalar (SpikeInterface)
 
-All 18 subjects with sorted units analyzed:
-
-| Category | n | Median Hz | Median STTC | Burst/min |
-|----------|---|-----------|-------------|-----------|
-| Human organoid (HO1–HO8) | 8 | 0.42 | 0.159 | 9.84 |
-| Mouse organoid (MO10–MO14) | 5 | 4.42 | 0.014 | 5.40 |
-| Ex vivo mouse cortex (M1S1–M3S2) | 5 | 0.39 | 0.144 | 10.10 |
-
-Age group comparison (human organoids):
-- G1 (6–7 months): STTC = 0.295 ± 0.096
-- G2 (~3.3 months): STTC = 0.023 ± 0.008
-- Mann-Whitney p = 0.029
+| # | Algoritma | Notlar |
+|---|-----------|--------|
+| 1 | mountainsort5 | Önerilen — hızlı, stabil |
+| 2 | spykingcircus2 | Büyük kanallar için |
+| 3 | tridesclous2 | Alternatif |
+| 4 | simple | En hafif, düşük RAM |
 
 ---
 
-## Known Limitations
+## Doğrulama
 
-- Sorted units mode only (NWB `units` table required). Raw signal mode is experimental.
-- Recording duration and organoid age are confounded in DANDI:001603 (G1: 3 min, G2: 10 min).
-- Graph theory sigma values unreliable for small networks (n=20); σ > 2 results more trustworthy.
-- n = 4–8 per group — indicative, not conclusive.
+**Sorted units pipeline:** 15/15 sentetik test geçti
 
----
+**SpikeInterface entegrasyonu:** DANDI:001132 sub-5C-1 üzerinde doğrulandı
+- 942 kanal HD-MEA, 50.1 sn kayıt
+- mountainsort5 ile 9 unit sorted
+- Medyan Hz: 1.15, STTC: -0.013
 
-## References
-
-- van der Molen et al. (2026). Preconfigured neuronal firing sequences in human brain organoids. *Nature Neuroscience*, 29(1), 123–135. DANDI:001603.
-- Cutts & Eglen (2014). Detecting pairwise correlations in spike trains. *Journal of Neuroscience*, 34(43), 14288–14303.
-- Buzsáki & Mizuseki (2014). The log-dynamic brain. *Nature Reviews Neuroscience*, 15(4), 264–278.
-- Rübel et al. (2022). The Neurodata Without Borders ecosystem. *eLife*, 11, e78362.
+**DANDI:001603 tam dataset analizi:** 18 subject, ~1,610 nöron
 
 ---
 
-*Data: DANDI:001603, CC-BY-4.0. Pipeline: independent development. Not peer reviewed.*
+## DANDI:001603 Özet Bulgular
+
+| Kategori | n | Medyan Hz | Medyan CV | STTC | Burst/dk |
+|----------|---|-----------|-----------|------|----------|
+| İnsan organoidi (HO1–HO8) | 8 | 0.42 | 1.92 | 0.159 | 9.84 |
+| Fare organoidi (MO10–MO14) | 5 | 4.42 | 1.15 | 0.014 | 5.40 |
+| Ex vivo fare korteksi (M1S1–M3S2) | 5 | 0.39 | 2.83 | 0.144 | 10.10 |
+
+**Yaş grubu farkı (insan organoidi):** Mann-Whitney p=0.029 — STTC ve CV
+
+**Graph theory:** HO6 ve HO7 (her ikisi P100D) güçlü small-world topoloji (σ ≈ 4.3)
+
+---
+
+## Companion
+
+**organoid-oi v3** — Kapalı döngü organoid zekası simülasyon sistemi  
+→ [github.com/metin/organoid-oi](https://github.com/metin/organoid-oi)
+
+---
+
+*Axon v6.3 · MEA tabanlı organoid elektrofizyolojisi · Not peer reviewed · May 2026*
