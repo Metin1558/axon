@@ -1,0 +1,504 @@
+\documentclass[11pt,a4paper]{article}
+
+% ── Packages ────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{abstract}
+\usepackage{authblk}
+\usepackage{lineno}
+
+% ── Colors ──────────────────────────────────────────────
+\definecolor{darkblue}{RGB}{26,58,92}
+\definecolor{codegray}{RGB}{245,245,245}
+\definecolor{codelabel}{RGB}{100,100,100}
+
+% ── Hyperref setup ──────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=darkblue,
+    citecolor=darkblue,
+    urlcolor=darkblue,
+    pdftitle={Axon: A Standardized Open-Source Pipeline for Brain Organoid MEA Electrophysiology},
+    pdfauthor={Metin},
+    pdfkeywords={brain organoid, MEA, electrophysiology, NWB, DANDI, spike sorting, STTC}
+}
+
+% ── Section formatting ───────────────────────────────────
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection.}{0.5em}{}
+
+% ── Code listing ─────────────────────────────────────────
+\lstset{
+    backgroundcolor=\color{codegray},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{gray!40},
+    xleftmargin=10pt,
+    xrightmargin=10pt,
+    aboveskip=6pt,
+    belowskip=6pt,
+}
+
+% ── Header/footer ────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{Axon: Open-Source Organoid MEA Pipeline}}
+\fancyhead[R]{\small\textit{Metin, 2026}}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Line numbers (preprint style) ────────────────────────
+\linenumbers
+
+% ── Caption style ────────────────────────────────────────
+\captionsetup{font=small, labelfont=bf, skip=4pt}
+
+% ════════════════════════════════════════════════════════
+\begin{document}
+
+% ── Title ────────────────────────────────────────────────
+\begin{center}
+{\LARGE\bfseries Axon: A Standardized Open-Source Pipeline for\\[4pt]
+Brain Organoid MEA Electrophysiology ---\\[4pt]
+Validation Across Four Public Datasets}
+
+\vspace{12pt}
+{\large Metin}\\[4pt]
+{\normalsize\itshape Independent Researcher}\\[4pt]
+{\small May 2026 \quad $\cdot$ \quad Preprint --- Not peer reviewed}\\[4pt]
+{\small \href{https://github.com/metin/axon}{github.com/metin/axon}}
+\end{center}
+
+\vspace{6pt}
+\noindent\rule{\textwidth}{0.8pt}
+\vspace{4pt}
+
+% ── Abstract ─────────────────────────────────────────────
+\begin{abstract}
+\noindent
+Brain organoid MEA (microelectrode array) electrophysiology is a rapidly growing 
+field with no established analysis standards. Different groups use different metrics, 
+thresholds, and algorithms --- making cross-study comparison difficult. We present 
+\textbf{Axon} (v6.3), an open-source Python pipeline for end-to-end analysis of 
+NWB-formatted brain organoid MEA recordings with direct DANDI Archive integration. 
+Axon computes per-unit firing rate, inter-spike interval statistics, coefficient of 
+variation, Spike Time Tiling Coefficient (STTC) cross-unit synchrony matrices, 
+adaptive network burst detection, and graph-theoretic network topology via a single 
+command-line interface. Version 6.3 adds full \textbf{SpikeInterface} integration 
+for spike sorting of raw high-density MEA data, supporting four algorithms 
+(mountainsort5, spykingcircus2, tridesclous2, simple) with DC-corrected 
+RMS-based channel selection (default 64 of 942 channels) and per-unit quality 
+metrics (SNR, ISI violation ratio, firing rate). We validate the pipeline on four 
+public DANDI datasets spanning \textbf{29 subjects}: DANDI:001603 (human and mouse 
+brain organoids and ex~vivo mouse cortex, sorted units), DANDI:001132 (human 
+hippocampal organoids, HD-MEA raw signal), DANDI:000774 (in~vitro MEA, sorted 
+units), and DANDI:001611 (chronic dissociated cortical culture, scalability test). 
+All analysis modules are dataset-agnostic. Source code is available at 
+\href{https://github.com/metin/axon}{github.com/metin/axon}.
+
+\vspace{4pt}
+\noindent\textbf{Keywords:} brain organoid, MEA electrophysiology, NWB, DANDI, 
+spike sorting, SpikeInterface, STTC, graph theory, open-source, organoid intelligence
+\end{abstract}
+
+\noindent\rule{\textwidth}{0.8pt}
+\vspace{4pt}
+
+% ════════════════════════════════════════════════════════
+\section{Introduction}
+
+Brain organoids derived from induced pluripotent stem cells (iPSCs) have emerged 
+as a tractable three-dimensional model for human cortical development 
+\citep{lancaster2013}, disease modeling \citep{trujillo2022review}, and --- most 
+recently --- as a substrate for biological computation \citep{kagan2022}. Coupled 
+to microelectrode arrays (MEAs), organoids generate measurable extracellular 
+electrical activity, including spontaneous firing, network bursts, and coordinated 
+oscillations \citep{trujillo2019}.
+
+Despite rapid growth, no standardized analysis pipeline exists for organoid MEA 
+electrophysiology data. Different groups use different spike detection thresholds, 
+burst detection algorithms, and synchrony metrics --- making cross-study comparison 
+difficult \citep{smirnova2023}. The Neurodata Without Borders (NWB) format 
+\citep{rubel2022} and the DANDI Archive \citep{bhatt2023} provide a common data 
+standard, but the analytical layer remains fragmented.
+
+The availability of public organoid MEA datasets --- particularly DANDI:001603 
+\citep{vandermolen2026} --- creates an opportunity to develop and validate a 
+standardized pipeline across multiple preparations, species, and recording 
+conditions. However, these datasets contain both pre-sorted units (NWB units table) 
+and raw high-density MEA recordings (ElectricalSeries only), requiring a pipeline 
+that handles both data types.
+
+We present \textbf{Axon} (v6.3), a modular Python pipeline that addresses this gap. 
+Axon processes NWB files from the DANDI Archive through a standardized analysis 
+chain: quality control, per-unit ISI statistics, STTC synchrony matrices, adaptive 
+burst detection, and graph-theoretic network topology. For raw signal files, Axon 
+integrates SpikeInterface \citep{buccino2020} for automated spike sorting with four 
+algorithm options, DC-corrected RMS-based channel selection, and quality metrics per 
+sorted unit. All modules are dataset-agnostic.
+
+We validate the pipeline on 29 subjects from four public DANDI datasets, spanning 
+human and mouse brain organoids, ex~vivo cortical slices, high-density hippocampal 
+organoid recordings, and chronic dissociated cortical cultures. We report 
+cross-dataset electrophysiological profiles, age-dependent synchrony in human 
+organoids, network topology transitions, and SpikeInterface performance on HD-MEA 
+data.
+
+% ════════════════════════════════════════════════════════
+\section{Methods}
+
+\subsection{Pipeline Architecture}
+
+Axon is implemented in Python~3.9+ and organized into 15 modules 
+(Table~\ref{tab:modules}). The pipeline detects NWB file type automatically: if a 
+units table is present, per-unit analysis proceeds directly; if only raw 
+ElectricalSeries data is present, the user is offered threshold detection or 
+SpikeInterface spike sorting. All outputs are written to a subject-specific results 
+directory as CSV files and a 4-panel quicklook figure.
+
+\begin{table}[h]
+\centering
+\caption{Axon v6.3 core modules.}
+\label{tab:modules}
+\small
+\begin{tabular}{p{3.8cm} p{10.5cm}}
+\toprule
+\textbf{Module} & \textbf{Function} \\
+\midrule
+\texttt{organoid\_io.py} & NWB reading, file type detection (sorted/raw), 
+RAM safety, DANDI streaming \\
+\texttt{organoid\_signal.py} & Bandpass filter (300--3000~Hz), MAD-threshold 
+spike detection \\
+\texttt{organoid\_qc.py} & Refractory violation rate, Wilson CI, SNR \\
+\texttt{organoid\_metrics.py} & ISI statistics, CV, STTC ($\Delta t = 10$~ms), 
+permutation test \\
+\texttt{organoid\_units\_analiz.py} & Per-unit orchestrator, STTC matrix, 
+burst detection, quicklook \\
+\texttt{si\_sorting.py} & SpikeInterface: 4 algorithms, RMS channel 
+selection, quality metrics \\
+\texttt{graph\_analiz.py} & Clustering coefficient, path length, 
+small-world index $\sigma$ \\
+\texttt{gruplu\_analiz.py} & Auto-grouping by prefix/duration, Mann--Whitney U \\
+\texttt{organoid\_cli.py} & CLI: search, download, analyze in one command \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Key Algorithms}
+
+\subsubsection{Spike Time Tiling Coefficient (STTC)}
+
+Cross-unit pairwise synchrony was quantified using the STTC metric 
+\citep{cutts2014}, which is independent of firing rate. For two spike trains 
+$A$ and $B$ with coincidence window $\Delta t = 10$~ms:
+
+\begin{equation}
+\text{STTC} = \frac{1}{2}\left[\frac{P_A - T_B}{1 - P_A \cdot T_B} + 
+\frac{P_B - T_A}{1 - P_B \cdot T_A}\right]
+\end{equation}
+
+\noindent where $T_A$ is the fraction of time within $\Delta t$ of a spike in $A$, 
+and $P_A$ is the fraction of $B$~spikes within $\Delta t$ of an $A$~spike. STTC 
+ranges from $-1$ (anti-correlated) to $+1$ (perfectly synchronous). Matrices were 
+computed for the top~20 most active units per subject.
+
+\subsubsection{Adaptive Burst Detection}
+
+Population firing rate was binned at 50~ms. Burst threshold was set adaptively 
+using the Median Absolute Deviation (MAD):
+
+\begin{equation}
+\theta = \text{median}(r) + 3 \times \text{MAD}(r), \quad 
+\text{with} \geq 3 \text{ co-firing units required}
+\end{equation}
+
+\noindent This adaptive approach avoids the fixed-threshold problem when comparing 
+preparations with 10-fold differences in baseline firing rate.
+
+\subsubsection{Graph-Theoretic Network Topology}
+
+STTC values exceeding 0.1 defined network edges. Clustering coefficient~$C$, mean 
+path length~$L$, and small-world index $\sigma = (C/C_{\text{rand}})/(L/L_{\text{rand}})$ 
+were computed via NetworkX. $\sigma > 1$ indicates small-world topology.
+
+\subsection{SpikeInterface Integration}
+
+For raw electrophysiology data, Axon integrates SpikeInterface (v0.104.3) 
+\citep{buccino2020} via the \texttt{si\_sorting.py} module. The workflow:
+
+\begin{enumerate}
+\item NWB reading with automatic ElectricalSeries path detection
+\item Unsigned-to-signed dtype conversion (required for uint16 HD-MEA data)
+\item \textbf{DC-offset removal} followed by per-channel RMS computation 
+      (10-second window)
+\item Selection of $N$ most active channels by RMS (default $N = 64$)
+\item Bandpass filtering (300--3000~Hz)
+\item Spike sorting: mountainsort5 (scheme1), spykingcircus2, tridesclous2, or simple
+\item Quality metrics: SNR, ISI violation ratio (threshold $< 10\%$), 
+      firing rate (threshold $> 0.05$~Hz)
+\end{enumerate}
+
+\noindent DC-offset correction is critical for uint16 recordings: without it, all 
+channels exhibit near-identical RMS ($\approx$32,000~ADU), rendering channel 
+selection meaningless. After mean subtraction, RMS reflects genuine signal amplitude 
+variation (13--68~$\mu$V across channels in DANDI:001132), enabling meaningful 
+selection of the most active electrode subset.
+
+\subsection{Datasets}
+
+Four public DANDI datasets were analyzed (Table~\ref{tab:datasets}). All data were 
+accessed under CC-BY-4.0 licenses. No new biological experiments were conducted.
+
+\begin{table}[h]
+\centering
+\caption{Datasets analyzed in this study.}
+\label{tab:datasets}
+\small
+\begin{tabular}{lp{4.5cm}ccc}
+\toprule
+\textbf{Dataset} & \textbf{Description} & \textbf{Subjects} & 
+\textbf{Data type} & \textbf{Species} \\
+\midrule
+DANDI:001603 \citep{vandermolen2026} & Preconfigured firing sequences, 
+brain organoids & 18 & Sorted units & Human, mouse \\
+DANDI:001132 & Multimodal HD-MEA, hippocampal organoids & 5 & 
+Raw signal & Human \\
+DANDI:000774 & Spatial/temporal propagation, in~vitro MEA & 5 & 
+Sorted units & Mouse \\
+DANDI:001611 & Chronic dissociated cortical cultures & 1 & 
+Sorted units & Rat \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ════════════════════════════════════════════════════════
+\section{Results}
+
+\subsection{Pipeline Validation --- Synthetic Tests}
+
+Axon passed 15/15 synthetic validation tests covering: spike detection accuracy; 
+STTC correctness on known inputs (identical trains: STTC\,=\,1.000; independent 
+Poisson trains: STTC\,=\,$-0.015$); MAD robustness (5\% outlier injection: 
+std $+403\%$, MAD $+0.8\%$); RAM overflow protection; and Wilson CI correctness 
+at zero refractory violations.
+
+\subsection{DANDI:001603 --- Cross-Category Electrophysiological Profiles}
+
+The complete DANDI:001603 dataset (18 subjects with sorted units) was analyzed. 
+Three biological categories were identified from subject metadata 
+(Table~\ref{tab:001603}).
+
+\begin{table}[h]
+\centering
+\caption{DANDI:001603 three-category descriptive statistics (mean\,$\pm$\,SD). 
+Recording durations and ages were not controlled across categories.}
+\label{tab:001603}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Category} & $n$ & \textbf{Median Hz} & \textbf{Median CV} & 
+\textbf{Median STTC} & \textbf{Burst/min} & \textbf{Active} \\
+\midrule
+Human organoid & 8 & $0.42 \pm 0.18$ & $1.92 \pm 0.85$ & 
+$0.159 \pm 0.150$ & $9.84 \pm 6.18$ & 99\% \\
+Mouse organoid & 5 & $4.42 \pm 1.48$ & $1.15 \pm 1.04$ & 
+$0.014 \pm 0.030$ & $5.40 \pm 10.80$ & 49\% \\
+Ex~vivo mouse cortex & 5 & $0.39 \pm 0.18$ & $2.83 \pm 1.04$ & 
+$0.144 \pm 0.060$ & $10.10 \pm 5.43$ & 100\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Mouse organoids showed approximately 10-fold higher median firing rate than human 
+organoids (4.42 vs.\ 0.42~Hz). Ex~vivo mouse cortex showed a firing rate profile 
+comparable to human organoids (0.39~Hz) despite the same species origin, suggesting 
+that the firing rate difference reflects preparation-specific factors rather than 
+species genetics alone. Age differences, culture protocols, and MEA geometry were 
+not controlled and remain as confounds for future investigation.
+
+\subsection{Age-Dependent Synchrony in Human Organoids}
+
+Human organoids were divided into two age groups based on available metadata: 
+G1 (6--7~months, HO1--HO4, $n=4$) and G2 ($\approx$3.3~months/P100D, HO5--HO8, 
+$n=4$). Mann--Whitney U test revealed significant differences in both median STTC 
+($0.295 \pm 0.096$ vs.\ $0.023 \pm 0.008$, $p = 0.029$) and median CV 
+($1.17 \pm 0.16$ vs.\ $2.68 \pm 0.53$, $p = 0.029$). Burst rate and median~Hz 
+did not differ significantly ($p = 0.200$ for both).
+
+Older human organoids thus exhibited higher cross-unit synchrony and more regular 
+firing --- consistent with the maturation trajectory reported by 
+\citet{trujillo2019}. However, G1 recordings lasted 3~min and G2 recordings 10~min, 
+creating an age--duration confound that cannot be fully decoupled at $n=4$ per 
+group. Replication with $n \geq 8$ and controlled recording duration is required.
+
+\subsection{Network Topology --- Small-World Structure}
+
+Graph-theoretic analysis (STTC threshold 0.1, top~20 units) revealed heterogeneous 
+topology across human organoids. Two subjects (HO6 and HO7, both P100D) exhibited 
+strong small-world topology ($\sigma \approx 4.3$), while older organoids 
+($>$6~months) showed dense near-fully-connected networks ($\sigma \approx 1.0$). 
+This suggests a topological transition during organoid maturation from sparse 
+small-world to hub-dominated architecture, consistent with developmental wiring 
+principles \citep{watts1998}.
+
+\begin{table}[h]
+\centering
+\caption{Graph theory metrics for human organoids (DANDI:001603).}
+\label{tab:graph}
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Subject} & \textbf{Age} & \textbf{Density} & 
+\textbf{Clustering} & \boldmath$\sigma$ & \textbf{Small-world} \\
+\midrule
+HO1--HO4 & P6M--P7M & 0.65--0.96 & 0.81--0.97 & 1.00--1.20 & Weak \\
+HO5 & P100D & 0.068 & 0.367 & 1.000 & No \\
+HO6 & P100D & 0.153 & 0.364 & 4.363 & \textbf{Strong} \\
+HO7 & P100D & 0.126 & 0.390 & 4.333 & \textbf{Strong} \\
+HO8 & P100D & 0.042 & 0.133 & 1.000 & No \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{DANDI:001132 --- SpikeInterface on HD-MEA Raw Data}
+
+Five subjects from DANDI:001132 (\textit{Homo sapiens}, human hippocampal 
+organoids) were analyzed. All files contained raw electrophysiology with 
+745--972 channels at 20,000~Hz. DC-corrected RMS channel selection (64/745--972 
+channels, RMS range 13--68~$\mu$V) followed by mountainsort5 (scheme1) 
+sorting was applied (Table~\ref{tab:001132}).
+
+\begin{table}[h]
+\centering
+\caption{DANDI:001132 SpikeInterface sorting results. 
+Qualification: SNR\,$>$\,3.0, ISI violation\,$<$\,10\%, Hz\,$>$\,0.05.}
+\label{tab:001132}
+\small
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Subject} & \textbf{Channels} & \textbf{Duration (s)} & 
+\textbf{Units} & \textbf{Qualified} & \textbf{Median Hz} & 
+\textbf{Max STTC} & \textbf{Bursts} \\
+\midrule
+3C-1 & 972$\to$64 & 41 & 15 & 9/15 & 1.76 & 0.196 & 3 \\
+4C-1$^{*}$ & 745$\to$64 & 180 & 2 & 0/2 & 19.76 & $-0.014$ & 0 \\
+5C-1 & 942$\to$64 & 51 & 6 & 4/6 & 1.11 & 0.058 & 0 \\
+6C-1 & 947$\to$64 & 101 & 3 & 2/3 & 0.74 & 0.027 & 0 \\
+7D-7 & 907$\to$64 & 81 & 4 & 3/4 & 1.10 & 0.028 & 0 \\
+\bottomrule
+\multicolumn{8}{l}{\small $^{*}$Excluded from comparative analyses (likely failed sorting; 
+see Section~\ref{sec:limitations}).}
+\end{tabular}
+\end{table}
+
+\subsection{DANDI:000774 --- In~Vitro MEA Validation}
+
+Five subjects from DANDI:000774 (sorted units, mouse in~vitro MEA) were analyzed 
+with per-unit analysis capped at 50~units. Recordings ranged from 3,261 to 
+10,926~s with high burst counts (514--1,708). Median firing rates ranged from 
+0.41 to 1.58~Hz with median STTC values 0.046--0.130, indicating moderate 
+synchrony consistent with in~vitro cortical network dynamics.
+
+\subsection{DANDI:001611 --- Chronic Culture Scalability Test}
+
+One subject from DANDI:001611 (sub-24846, dissociated rat cortical culture, 
+950 sorted units, 261,569~s recording, 974,562 total spikes) was analyzed as 
+a pipeline scalability test. Axon completed the full pipeline without modification 
+in 16,225~s ($\approx$4.5~hours), demonstrating that the pipeline handles 
+large-scale chronic recordings. This subject is not included in organoid 
+comparisons.
+
+% ════════════════════════════════════════════════════════
+\section{Discussion}
+
+Axon provides the first open-source pipeline specifically designed for NWB-formatted 
+brain organoid MEA data with DANDI integration. Validation across four datasets 
+demonstrated consistent performance across sorted-units and raw-signal data types, 
+multiple species and preparation types, and recording durations from 41~s to 3~days.
+
+The age-dependent synchrony finding ($p = 0.029$, $n = 4$ per group) is consistent 
+with prior reports of emergent oscillations in maturing organoids \citep{trujillo2019}. 
+The strong small-world topology in HO6 and HO7 ($\sigma \approx 4.3$, both P100D) 
+but not in HO5 and HO8 (also P100D, $\sigma = 1.0$) suggests that small-world 
+organization may be a transient developmental feature. Age-matched longitudinal 
+recordings with controlled duration are required for definitive interpretation.
+
+The DC-offset correction step proved critical for HD-MEA channel selection. Without 
+it, uint16-to-int16 converted recordings exhibit near-identical RMS ($\approx$32,000 
+ADU), rendering channel selection uninformative. After mean subtraction, RMS 
+variation (13--68~$\mu$V) reflects genuine differences in electrode activity.
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\begin{itemize}
+\item \textbf{Age--duration confound (DANDI:001603):} G1 (3~min) and G2 (10~min) 
+recordings differ in both age and duration. Replication at $n \geq 8$ with 
+controlled duration is required.
+\item \textbf{Unit cap at 50 for per-unit analysis:} Prevents computational overload 
+on high-unit-count preparations. Future work should implement vectorized ISI 
+computation.
+\item \textbf{SpikeInterface run-to-run variation:} Stochastic clustering in 
+mountainsort5 produces $\pm$1 unit variation per run. This should be 
+quantified systematically.
+\item \textbf{4C-1 sorting failure:} Two units, 0 qualified, median Hz 19.76 for 
+a 180-s recording --- anomalous. Likely reflects unresolved multi-unit activity.
+\item \textbf{No isolation distance or L-ratio:} Waveform-based quality metrics 
+beyond SNR are not yet computed automatically.
+\end{itemize}
+
+% ════════════════════════════════════════════════════════
+\section{Conclusions}
+
+Axon provides a standardized, reproducible, open-source analytical baseline for 
+brain organoid MEA electrophysiology. By integrating DANDI access, SpikeInterface 
+spike sorting, and graph-theoretic analysis in a single command-line tool, Axon 
+reduces the analytical barrier for groups generating or analyzing organoid MEA data. 
+Validation across 29 subjects from four public datasets demonstrates consistent 
+performance across diverse recording conditions and preparation types.
+
+The pipeline is designed as a computational companion to organoid-oi v3 
+\citep{metin2026oi}, a closed-loop organoid intelligence simulation system: Axon 
+quantifies organoid dynamics from existing recordings, while organoid-oi provides 
+the computational framework for future closed-loop hardware experiments.
+
+% ════════════════════════════════════════════════════════
+\section*{Data and Code Availability}
+
+All datasets are publicly available on the DANDI Archive under CC-BY-4.0:
+DANDI:001603, DANDI:001132, DANDI:000774, DANDI:001611 
+(\href{https://dandiarchive.org}{dandiarchive.org}).
+
+Axon source code: \href{https://github.com/metin/axon}{github.com/metin/axon}.
+
+organoid-oi v3: 
+\href{https://github.com/metin/organoid-oi}{github.com/metin/organoid-oi}.
+
+No new biological data were generated for this study.
+
+% ════════════════════════════════════════════════════════
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
