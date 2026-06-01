@@ -147,10 +147,10 @@ Small-world topology: HO6 and HO7 (P100D) σ ≈ 4.3; older organoids σ ≈ 1.0
 
 If you use Axon in your work, please cite:
 
-```
+
 Metin (2026). Axon: A Standardized Open-Source Pipeline...
 Zenodo: https://doi.org/10.5281/zenodo.20492811
-```
+
 
 ---
 
