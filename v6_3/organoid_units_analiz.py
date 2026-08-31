@@ -77,7 +77,7 @@ def unit_analiz(unit_id, spike_zaman, sure_sn, refractory_ms=1.0,
     
     # Activelik (kac pencerede active) - tuple doner
     aktiflik_orani, aktif_pencere, toplam_pencere = omet.aktiflik_window(
-        spike_zaman, sure_sn, pencere_sn=pencere_sn)
+        spike_zaman, sure_sn, window_sn=pencere_sn)
     
     # Mean Hz
     ort_hz = n_spike / sure_sn if sure_sn > 0 else 0
@@ -87,7 +87,7 @@ def unit_analiz(unit_id, spike_zaman, sure_sn, refractory_ms=1.0,
     if n_spike >= 50 and aktif_pencere >= 3:
         try:
             perm = omet.isi_shuffle_permutasyon(
-                spike_zaman, sure_sn, pencere_sn=pencere_sn,
+                spike_zaman, sure_sn, window_sn=pencere_sn,
                 n_permutasyon=perm_n, seed=perm_seed)
             if perm:
                 perm_p = perm['p_deger']
