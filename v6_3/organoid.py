@@ -149,7 +149,7 @@ def analiz_calistir(args):
         gurultu_std = osig.gurultu_std_ornappend(
             oio, dosya, meta['sr'],
             args.bandpass[0], args.bandpass[1],
-            n_ornek=10, ornek_sn=30, kanal=args.kanal,
+            n_ornek=10, ornek_sn=30, channel=args.kanal,
             mad_kullan=args.mad_esik)
         gurultu_std_uv = gurultu_std * 1e6
         print(f'   Gurultu std: {gurultu_std_uv:.2f} uV ({gurultu_yontem})')
@@ -162,7 +162,7 @@ def analiz_calistir(args):
         chunk_count = 0
 
         for chunk_data, bas, bit, sr in oio.ham_chunk_uret(
-                dosya, chunk_sn=args.chunk, kanal=args.kanal):
+                dosya, chunk_sn=args.chunk, channel=args.kanal):
             doygun = osig.doygunluk_tespit(chunk_data)
             toplam_doygun += doygun
             chunk_count += 1
@@ -220,20 +220,20 @@ def analiz_calistir(args):
 
     # 4. Aktiflik
     aktiflik = omet.aktiflik_window(
-        spike_zaman, sure_sn, pencere_sn=args.pencere)
+        spike_zaman, sure_sn, window_sn=args.pencere)
 
     # 5. CV zaman serisi
     cv_seri = omet.cv_zaman_serisi(
-        spike_zaman, sure_sn, pencere_sn=args.pencere)
+        spike_zaman, sure_sn, window_sn=args.pencere)
     cv_degerleri = [x[1] for x in cv_seri]
 
     # 6. Spektral
-    fft_list = omet.fft_periyotlar(cv_degerleri, pencere_sn=args.pencere)
-    welch_list = omet.welch_periyotlar(cv_degerleri, pencere_sn=args.pencere)
+    fft_list = omet.fft_periyotlar(cv_degerleri, window_sn=args.pencere)
+    welch_list = omet.welch_periyotlar(cv_degerleri, window_sn=args.pencere)
 
     # 7. Permütasyon
     perm = omet.isi_shuffle_permutasyon(
-        spike_zaman, sure_sn, pencere_sn=args.pencere,
+        spike_zaman, sure_sn, window_sn=args.pencere,
         n_permutasyon=1000, seed=42)
 
     # 8. Stim analizi
