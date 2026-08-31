@@ -102,23 +102,34 @@ except ImportError:
 
 # Spike sorting algoritmaları
 print("\n  Spike sorting algoritmaları kontrol ediliyor...")
-algoritmalar = [
-    ("mountainsort5", "mountainsort5", "MountainSort5 (önerilen)"),
-    ("tridesclous2",  "tridesclous",   "Tridesclous2"),
-    ("spykingcircus2","spyking_circus", "SpykingCircus2"),
-]
 
-for pip_adi, import_adi, aciklama in algoritmalar:
-    try:
-        __import__(import_adi)
-        print(f"  ✓ {pip_adi:<20} kurulu  ({aciklama})")
-    except ImportError:
-        print(f"  → {pip_adi:<20} kuruluyor...", end="", flush=True)
-        r = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--quiet", pip_adi],
-            capture_output=True, text=True
-        )
-        print(" OK" if r.returncode == 0 else " HATA (opsiyonel)")
+# tridesclous2 ve spykingcircus2, ayrı pip paketleri DEĞİL —
+# spikeinterface'in kendi içinde hazır gelen dahili sorter'lar.
+# Sadece mountainsort5 gerçekten ayrı bir pip paketi.
+try:
+    import spikeinterface.sorters as _ss
+    _kurulu = _ss.installed_sorters()
+except Exception:
+    _kurulu = []
+
+for dahili_ad, aciklama in [("tridesclous2", "Tridesclous2 (spikeinterface dahili)"),
+                              ("spykingcircus2", "SpykingCircus2 (spikeinterface dahili)")]:
+    if dahili_ad in _kurulu:
+        print(f"  ✓ {dahili_ad:<20} kurulu  ({aciklama})")
+    else:
+        print(f"  ✗ {dahili_ad:<20} bulunamadı ({aciklama}) — spikeinterface kurulumunu kontrol edin")
+
+pip_adi, import_adi, aciklama = "mountainsort5", "mountainsort5", "MountainSort5 (önerilen)"
+try:
+    __import__(import_adi)
+    print(f"  ✓ {pip_adi:<20} kurulu  ({aciklama})")
+except ImportError:
+    print(f"  → {pip_adi:<20} kuruluyor...", end="", flush=True)
+    r = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--quiet", pip_adi],
+        capture_output=True, text=True
+    )
+    print(" OK" if r.returncode == 0 else " HATA (opsiyonel)")
 
 print()
 
