@@ -649,7 +649,7 @@ def main():
     print('[4/5] Network burst tespiti...')
     burst_sonuc = network_burst_tespit(spike_listesi, sure_sn)
     print(f'  Burst sayisi: {burst_sonuc.get("burst_sayisi", 0)}')
-    print(f'  Burst/minute: {burst_sonuc.get("burst_orani_per_minute", 0)}')
+    print(f'  Burst/minute: {burst_sonuc.get("burst_orani_per_dakika", 0)}')
     if burst_sonuc.get('burst_sayisi', 0) > 0:
         print(f'  Median burst suresi: '
               f'{burst_sonuc.get("medyan_burst_sure_sn", 0):.3f} sn')
@@ -717,18 +717,18 @@ def main():
     print(f'  Total spike    : {len(tum_spike)}')
     print()
     print('  -- Hz Dagilimi (per-unit) --')
-    print(f'    Median       : {pop_metrik.get("hz_median", "N/A")} Hz')
+    print(f'    Median       : {pop_metrik.get("hz_medyan", "N/A")} Hz')
     print(f'    IQR          : {pop_metrik.get("hz_iqr", "N/A")} Hz')
     print(f'    Min - Max    : {pop_metrik.get("hz_min", "N/A")} - '
           f'{pop_metrik.get("hz_max", "N/A")} Hz')
     print()
     print('  -- Quality (per-unit) --')
-    print(f'    Median refractory violation : {pop_metrik.get("refractory_median", "N/A")}')
+    print(f'    Median refractory violation : {pop_metrik.get("refractory_medyan", "N/A")}')
     print(f'    Temiz unit orani (<%5)   : '
           f'{pop_metrik.get("unit_temiz_orani", "N/A")}')
     print()
     print('  -- Salinim Tespiti --')
-    print(f'    Median CV    : {pop_metrik.get("cv_median", "N/A")}')
+    print(f'    Median CV    : {pop_metrik.get("cv_medyan", "N/A")}')
     if 'ritim_unit_sayisi' in pop_metrik:
         print(f'    Ritim unit   : {pop_metrik["ritim_unit_sayisi"]} '
               f'({pop_metrik.get("ritim_unit_orani", 0)*100:.0f}%)')
@@ -741,7 +741,7 @@ def main():
     print()
     print('  -- Network Bursts --')
     print(f'    Burst sayisi      : {burst_sonuc.get("burst_sayisi", 0)}')
-    print(f'    Burst/minute      : {burst_sonuc.get("burst_orani_per_minute", 0)}')
+    print(f'    Burst/minute      : {burst_sonuc.get("burst_orani_per_dakika", 0)}')
     if burst_sonuc.get('burst_sayisi', 0) > 0:
         print(f'    Median burst sure : '
               f'{burst_sonuc.get("medyan_burst_sure_sn", 0):.3f} sn')
