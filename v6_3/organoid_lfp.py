@@ -222,7 +222,7 @@ def lfp_analiz(nwb_yolu, kanal=0, max_sure_sn=300.0):
     max_ornek = None
 
     for chunk_data, bas, bit, chunk_sr in oio.ham_chunk_uret(
-            nwb_yolu, chunk_sn=60, kanal=kanal):
+            nwb_yolu, chunk_sn=60, channel=kanal):
         if sr is None:
             sr = chunk_sr
             max_ornek = int(max_sure_sn * sr)
