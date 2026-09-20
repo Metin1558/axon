@@ -8,8 +8,8 @@ clearly separated where new:
    (human and mouse brain organoids). This is the same codebase that lives
    on GitHub today, plus three bug fixes described in detail below.
 2. **The TBL1XR1 extension** — a new, gene-specific hypothesis-testing layer
-   built on top of Axon, written for a possible collaboration with Acıbadem
-   University's ACURARE center on their TBL1XR1 brain organoid project.
+   built on top of Axon, designed as a gene-specific hypothesis-testing
+   layer for TBL1XR1 brain organoid electrophysiology.
    It does not duplicate any of Axon's logic; it imports and orchestrates it.
 
 Everything in this document reflects what was actually built, actually
@@ -253,8 +253,7 @@ that could not do anything correct on anyone else's machine.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 ```
 The path is now derived from the test file's own location, so it is
-correct on every machine, including whichever one a real ACURARE
-collaborator eventually runs this on.
+correct on every machine, including whichever one this is eventually run on.
 
 ### A documented (not fixed) limitation: `gruplu_analiz.py`'s automatic grouping
 
@@ -317,13 +316,12 @@ behaviors described above.
 
 ## 2.1 Why this exists
 
-This extension was built in the context of a possible collaboration with
-Acıbadem University's ACURARE (Rare Diseases and Orphan Drugs Research and
-Application Center), which publicly announced in January 2026 that it is
-developing Turkey's first brain-organoid model of TBL1XR1-related disease,
-in partnership with Altınbaş University and the HERDEM Çare Association (a
-patient advocacy group founded by the parent of a child diagnosed with a
-TBL1XR1 mutation).
+TBL1XR1 is a monogenic neurodevelopmental disease gene for which brain
+organoid modeling is an active area of research interest — organoid
+electrophysiology is a natural readout for a gene whose loss-of-function
+and missense variants produce autism, intellectual disability, seizures,
+and other neurodevelopmental phenotypes in patients (see the literature
+review in §2.2 for the full clinical picture).
 
 Axon's measurement core — firing rate, ISI/CV, STTC, network bursts,
 network topology — is already disease-agnostic; none of it assumes
@@ -576,20 +574,20 @@ silently losing track of this limitation).
 1. **It will be the first dataset to test whether Mastrototaro's mouse
    finding translates to human tissue at all.** No prior study has
    measured TBL1XR1-related electrophysiology in a human organoid.
-2. **For ACURARE's specific patient variant, this may produce the first
+2. **For a specific patient's variant, this may produce the first
    functional evidence in existence for that variant**, if — as is
    statistically likely given that most reported TBL1XR1 variants are
    private, single-patient findings (Nagy et al. found 26 of 32 genotyped
-   patients carried previously unreported variants) — the patient's
-   mutation does not match one of the four literature-characterized
-   classes. Functional evidence of this kind is the category of data used
-   under ACMG variant-classification criteria (specifically PS3) to
-   strengthen a variant's pathogenicity classification — this is not only
+   patients carried previously unreported variants) — that mutation does
+   not match one of the four literature-characterized classes. Functional
+   evidence of this kind is the category of data used under ACMG
+   variant-classification criteria (specifically PS3) to strengthen a
+   variant's pathogenicity classification — this is not only
    scientifically informative but potentially clinically relevant to the
    family involved.
 3. **It produces a candidate outcome measure for future treatment
-   testing**, consistent with ACURARE's own publicly stated goal of
-   investigating possible treatment approaches.
+   testing**, useful for any research program investigating possible
+   treatment approaches for TBL1XR1-related disease.
 4. **It directly answers an open question the natural-history literature
    itself poses.** Nagy et al. 2024 explicitly conclude that "it is not
    known whether functional differences caused by different variants in
