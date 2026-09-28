@@ -6,18 +6,24 @@ clearly separated where new:
 1. **Axon** — Metin's MEA (microelectrode array) electrophysiology analysis
    toolkit, validated across 4 DANDI Archive datasets and 29 subjects
    (human and mouse brain organoids). This is the same codebase that lives
-   on GitHub today, plus three bug fixes described in detail below.
+   on GitHub today, plus the bug fixes described in detail below (three
+   fixes from the first audit pass, and a second, larger round found while
+   auditing the remaining files — see §1.3).
 2. **The TBL1XR1 extension** — a new, gene-specific hypothesis-testing layer
    built on top of Axon, designed as a gene-specific hypothesis-testing
    layer for TBL1XR1 brain organoid electrophysiology.
    It does not duplicate any of Axon's logic; it imports and orchestrates it.
 
 Everything in this document reflects what was actually built, actually
-tested, and actually found while building it — including a real bug found
-in this same update cycle, and a real methodological limitation discovered
-while testing the new longitudinal-comparison wrapper. Nothing here is
-aspirational; every number quoted below came from an actual test run of
-the code in this archive.
+tested, and actually found while building it — including real bugs found
+in this same update cycle (see §1.3 for all of them), and a real
+methodological limitation discovered while testing the new
+longitudinal-comparison wrapper (§2.6). Nothing here is aspirational; every
+number quoted below came from an actual test run of the code in this
+archive, and every fix in §1.3 was reproduced live (via a synthetic NWB
+file, and in several cases by literally running `organoid.py analiz`
+end to end) before and after the fix, not just inferred from reading the
+code.
 
 ---
 
@@ -126,12 +132,14 @@ v6_3/                        Core analysis library (17 files)
 │                               snr_compute, doygunluk_tespit/saturation check)
 ├── organoid_sorting.py        Orchestrates the spike-sorting workflow
 ├── si_sorting.py               SpikeInterface integration for full sorting
-├── organoid_qc.py             Quality metrics: refractory_ihlget_orani (refractory
+├── organoid_qc.py             Quality metrics: refractory_ihlal_orani (refractory
 │                               violation rate + Wilson CI), negatif_isi_sayisi,
-│                               yogunluk_outlier_orani, channel_sessizligi
+│                               yogunluk_outlier_orani, channel_sessizligi,
+│                               kalite_metrikleri_topla
 ├── organoid_metrics.py        Core metrics: isi_metrikleri, sttc_iki_channel,
 │                               coklu_channel_senkron, mannwhitney_iki_grup,
-│                               ttest_iki_grup, anova_n_grup, aktiflik_window
+│                               ttest_iki_grup, anova_n_grup, aktiflik_window,
+│                               trial_stim_karsilastir
 ├── organoid_units_analiz.py   network_burst_tespit — the adaptive MAD burst detector
 ├── organoid_burst_ref.py      Bakkum 2013 reference comparison  [FIXED — see 1.3]
 ├── organoid_lfp.py            LFP band-power analysis (band_gucu_hesapla,
@@ -146,7 +154,7 @@ v6_3/                        Core analysis library (17 files)
 ├── organoid.py                 Single-NWB-file analysis entry point
 └── test_organoid_metrics.py    15-assertion synthetic-data validation suite  [FIXED — see 1.3]
 
-axon/                         CLI and batch tooling (7 files)
+axon/                         CLI and batch tooling (9 files)
 ├── organoid_cli.py             Main CLI: search, download, and dispatch analysis
 ├── dandi_ara.py                 DANDI Archive search
 ├── batch_analiz.py              Multi-subject batch analysis
@@ -157,7 +165,9 @@ axon/                         CLI and batch tooling (7 files)
 │                                graph_metrikleri_hesapla (density, clustering,
 │                                small-world sigma)
 ├── yas_metadata_cek.py          Extracts age metadata from NWB files
-└── KURULUM.py                   Installation helper script
+├── KURULUM.py                   Installation helper script
+├── paper.md                     JOSS-style software summary paper
+└── paper.bib                    Bibliography for paper.md
 
 paper/                        Axon's own preprint (PDF, LaTeX source, bibliography)
 ├── Axon_Preprint_LaTeX.pdf
@@ -169,10 +179,14 @@ LICENSE, requirements.txt     Unchanged from the original repository
 
 ## 1.3 Bug fixes applied in this update
 
-Three concrete, verifiable defects were found and fixed. After every fix,
-the original 15-assertion test suite was re-run and confirmed to still
-pass in full — **no regression was introduced**, and the existing
-29-subject analysis workflow is unaffected by any of these changes.
+Two rounds of bug-fixing are documented in this section. Round 1 (Fixes
+1–3) was the original audit. Round 2 (Fixes 4–8) came from a later, more
+exhaustive pass over every remaining file in `v6_3/` and `tbl1xr1/`. After
+every fix in both rounds, the full test suite was re-run and confirmed to
+still pass — **no regression was introduced**, and the existing 29-subject
+analysis workflow is unaffected by any of these changes.
+
+### Round 1
 
 ### Fix 1 — `organoid_burst_ref.py`: threshold contradicted its own citation
 
@@ -255,9 +269,213 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 The path is now derived from the test file's own location, so it is
 correct on every machine, including whichever one this is eventually run on.
 
+### Round 2 — a systematic corruption event, found while auditing the rest of the codebase
+
+While reviewing every remaining file against this README, a second, much
+larger family of defects was found — nearly all traceable to a single root
+cause: at some point, an automated Turkish→English translation or
+find-and-replace pass was run across the codebase's identifiers, comments,
+and docstrings, and it was buggy. Its clearest fingerprint: the Turkish
+word *"al"* ("take"/"get") was blindly replaced with the English *"get"*
+as a bare **substring**, wherever it occurred — including inside unrelated
+English words that happen to contain "al" (e.g. *quality* → `qugetity`,
+*values* → `vgets`, *interval* → `intervget`), and including inside real
+pynwb/scipy API names that aren't Turkish at all (`nwb.intervals` →
+`nwb.intervgets`, `noverlap` → `nosetlap`). A related pass also mangled a
+few whole words (`karşılaştır` → `kardeleteastir`, `seçilmişse` →
+`selectedyse`).
+
+Most of the damage was cosmetic: a corrupted docstring, or a corrupted
+identifier that stayed internally consistent between its definition and
+its one call site, doesn't change what the code computes — it just makes
+it hard to read. All of that has been cleaned up (`refractory_ihlget_orani`
+→ `refractory_ihlal_orani`, `qugetity_metrikleri_topla` →
+`kalite_metrikleri_topla`, `gurultu_std_ornappend` → `gurultu_std_ornekle`,
+`trial_stim_kardeleteastir` → `trial_stim_karsilastir`, plus dozens of
+corrupted words in comments and docstrings across `organoid_io.py`,
+`organoid_signal.py`, `organoid_qc.py`, `organoid_output.py`,
+`organoid_metrics.py`, and `organoid_plot.py`, with every call site updated
+to match each rename). But in several places the same corruption landed on
+**executable code**, not just prose, and those are real, verified bugs —
+Fixes 4 through 8 below.
+
+**Why the existing 15/15, 11/11, 6/6 test suites never caught any of
+this:** those suites only exercise the validated, documented pipeline
+(`organoid_cli.py` → `organoid_units_analiz.py` → the STTC/statistics
+functions in `organoid_metrics.py`, plus the TBL1XR1 layer on top of it).
+Every bug below lives either in the older, still-shipped
+`organoid.py` → `organoid_signal.py` / `organoid_qc.py` / `organoid_output.py`
+single-file entry point (which none of the three suites ever invoke), or
+in a function (`welch_periyotlar`, `anova_n_grup`) that the suite doesn't
+happen to call in the way that triggers the bug. Each fix below was
+reproduced live before being applied — via a synthetic NWB file built with
+`pynwb` (raw signal deliberately **not** named `'ES'`, sorted units, and a
+trial table), and, for the CLI-level bugs, by literally running
+`python3 v6_3/organoid.py analiz <file> ORG1 REC1` end to end — and
+re-verified the same way afterward. All three test suites (15/15, 11/11,
+6/6) were also re-run after every fix and stayed green throughout.
+
+#### Fix 4 — `organoid_io.py`: NWB reading was broken in four separate ways
+
+**Before:**
+- `nwb_metadata_read()` computed `sr` / `n_sample` / `elektrot_sayisi` /
+  `recording_suresi_sn` correctly, then immediately recomputed them in a
+  second, dead code block that overwrote them with `None` — and that
+  second block also raised `ValueError` outright for any NWB file
+  containing only spike-sorted units and no raw `ElectricalSeries` (a
+  normal, common file type).
+- Both `nwb_metadata_read()` and `trial_read()` accessed `nwb.intervgets`
+  — not a real pynwb attribute (the real one is `nwb.intervals`) — so both
+  functions raised `AttributeError` on every single NWB file, sorted or raw.
+- `_chunk_byte_kontrol()`'s over-limit error path referenced an undefined
+  name `max_s` (the real local variable was `max_sn`), so instead of
+  reporting the RAM-limit violation it raised `NameError` and hid the real
+  error.
+- `ham_chunk_uret()`'s `chunk_sn <= 0` guard referenced an undefined
+  `chunk_s`, raising `NameError` instead of the intended "chunk_sn pozitif
+  olmalı" message. Separately, it had no `max_sure_sn` parameter at all,
+  even though `organoid_units_analiz.py`'s raw-signal fallback path already
+  calls it with `max_sure_sn=180.0` — every such call raised
+  `TypeError: unexpected keyword argument`.
+
+**Why this mattered:** every one of these functions sits upstream of the
+entire raw-signal analysis path. A file with only sorted units (common)
+could never even have its metadata read. A file with trial/stimulus
+structure could never have that structure read. And the raw-signal MUA
+fallback path in `organoid_units_analiz.py` could never run at all, on any
+file, because of the missing parameter.
+
+**Fix applied:** the dead metadata block was removed (metadata is computed
+once, correctly, with `None` returned per-field only when no
+`ElectricalSeries` genuinely exists — no exception); both `nwb.intervgets`
+references were corrected to `nwb.intervals`; both `NameError`-causing
+typos were corrected to the real variable names; and `ham_chunk_uret()`
+gained the `max_sure_sn` parameter it was already being called with.
+Verified against a synthetic NWB file — all four paths now return correct
+values instead of raising.
+
+#### Fix 5 — `organoid_signal.py`: noise estimation assumed the raw signal was always named `'ES'`
+
+**Before:** `gurultu_std_ornappend()` read the raw signal via the hardcoded
+literal `nwb.acquisition['ES']`, rather than looking up the actual
+`ElectricalSeries` object regardless of its name — exactly what
+`organoid_io.py`'s own functions already did correctly.
+
+**Why this mattered:** an NWB file is free to name its `ElectricalSeries`
+anything at all; `'ES'` is neither a pynwb requirement nor a convention
+enforced anywhere else in this codebase. Any file whose raw signal wasn't
+literally named `'ES'` made this function raise `KeyError` immediately,
+taking down the entire MUA noise-estimation step, and with it the whole
+raw-signal spike-detection path in `organoid.py`.
+
+**Fix applied:** replaced the hardcoded lookup with the same
+name-independent search used in `organoid_io.py` (find the first
+acquisition object that has both `.data` and `.rate`). The function was
+also renamed `gurultu_std_ornekle` (see the Round 2 introduction above)
+and its one call site in `organoid.py` updated. Verified with a synthetic
+file whose `ElectricalSeries` is deliberately named `'ElectricalSeries_raw'`.
+
+#### Fix 6 — `organoid_output.py`: the terminal report reader accessed the wrong dictionary keys throughout
+
+**Before:** `terminget_write()` (the function that prints the final
+per-recording report) referenced an undefined variable `fwith_yolu` for
+the file-path line and an undefined `actiandlik` for the activity line —
+both `NameError`, meaning this function could not run to completion for
+*any* input. Independently of those crashes, it also read several
+dictionary keys that don't exist under those names in the dictionaries
+actually produced elsewhere in the pipeline: `qc["sr"]` instead of
+`qc["snr"]` (the printed "SNR" line silently showed the wrong field),
+`qc["mean_hz"]` instead of `qc["ortalama_hz"]`, `isi_metrik["median_isi"]`
+instead of `isi_metrik["medyan_isi"]`, `meta.get("recording_suresi_s")`
+instead of `meta.get("recording_suresi_sn")` (silently printed "NA" for a
+value that was actually available), and `perm["random_guc_median"]` /
+`perm["random_guc_q95"]` (bracket access on a key that doesn't exist
+raises `KeyError`, unlike the `.get()`-based typos above, which fail
+silently instead). The stimulation-by-trial section read
+`stim_trial["mean_hz_exists"]` / `stim_trial["mean_hz_missing"]`, but the
+dictionary actually produced by `trial_stim_karsilastir()` (see Fix 7)
+uses `mean_hz_var` / `mean_hz_yok` — another `KeyError`.
+
+**Why this mattered:** this is the function that prints the actual
+scientific result of a single-file analysis run to the terminal — the
+primary output of `organoid.py analiz`. Between the two `NameError`s, it
+could not print a single report, for any input, ever.
+
+**Fix applied:** every undefined name and mismatched key was corrected
+against the dictionaries' real, verified schemas (cross-checked against
+`csv_write()` in the same file, which already used the correct keys
+throughout and needed no changes). The function was also renamed
+`terminal_write` (from the corrupted `terminget_write`) and its call site
+in `organoid.py` updated. Verified end to end:
+`python3 v6_3/organoid.py analiz <synthetic.nwb> ORG1 REC1 --no-grafik`
+now runs start to finish and prints a complete, correctly populated report
+(previously this crashed immediately on the first `NameError`).
+
+#### Fix 7 — `organoid_metrics.py`: a wrong scipy keyword argument, and a dictionary-key mismatch with its own caller
+
+**Before:** `welch_periyotlar()` called
+`scipy.signal.welch(..., nosetlap=nosetlap)` — `noverlap` is the real
+keyword argument scipy's `welch()` expects; `nosetlap` doesn't exist, so
+this raised `TypeError` on every call. Separately, `anova_n_grup()`
+returned its per-group counts and means under the keys `n_groupr` /
+`mean_groupr`, but its only caller — `organoid_compare.py`'s
+`yazdir_coklu()` — reads `a["n_gruplar"]` / `a["mean_gruplar"]` (with an
+"l"), so any multi-group ANOVA comparison printed through that path raised
+`KeyError`.
+
+**Why this mattered:** `welch_periyotlar()` is one of two spectral-analysis
+methods offered (alongside FFT) for finding periodicity in a recording's
+activity — it could never run. The ANOVA key mismatch meant
+`organoid_compare.py`'s multi-recording comparison report could never
+print an ANOVA result across more than two groups.
+
+**Fix applied:** `nosetlap` → `noverlap`; `anova_n_grup()`'s returned keys
+changed to `n_gruplar` / `mean_gruplar` to match its caller (the caller was
+left unchanged, since it was already correct). While in this file, the
+corrupted `trial_stim_kardeleteastir` function was also renamed to
+`trial_stim_karsilastir` (its one call site, in `organoid.py`, was
+updated) and the same round of comment/docstring corruption described in
+the Round 2 introduction was cleaned up throughout the file. Verified with
+a live call to `welch_periyotlar()` and a 3-group `anova_n_grup()` call
+read back exactly as `organoid_compare.py` reads it.
+
+#### Fix 8 — `organoid.py`: the recording's real duration was silently discarded, twice
+
+**Before:** two separate lines read `meta.get('kayit_suresi_sn')` — a key
+that does not exist anywhere in the metadata dictionary produced by
+`organoid_io.nwb_metadata_read()` (the real key is `recording_suresi_sn`).
+Because both call sites use `.get()`, neither one crashed; both silently
+evaluated to `None`. The first is a display-only line
+(`print(f'Tip: {tip}, sure: {meta.get(...)} sn, ...')`), which always
+printed `sure: None sn`. The second is not display-only:
+`sure_sn = meta.get('kayit_suresi_sn') or float(spike_zaman[-1])` feeds
+directly into `aktiflik_window()`, `cv_zaman_serisi()`, and every
+FFT/Welch/permutation call downstream — because the `.get()` always
+returned `None`, `sure_sn` was silently always computed as "time of the
+last detected spike" instead of the recording's actual duration, for every
+single analysis run, even when the true duration was available from the
+file's metadata.
+
+**Why this mattered:** "time of the last spike" undercounts the true
+recording length whenever the tissue goes quiet before the recording
+actually stops (common) — every windowed metric (activity ratio, CV time
+series, FFT/Welch periodicity, ISI shuffle permutation) was being computed
+over a systematically shortened, spike-derived duration rather than the
+recording's real duration, for every raw-signal analysis run through this
+entry point.
+
+**Fix applied:** both occurrences corrected to
+`meta.get('recording_suresi_sn')`. The `or float(spike_zaman[-1])`
+fallback is intentionally preserved — it still applies correctly for
+sorted-units-only files, where `recording_suresi_sn` is genuinely `None`
+(no `ElectricalSeries` to compute a duration from). Verified: after the
+fix, the same synthetic 40-second recording reports `sure: 40.0 sn`
+(previously `sure: None sn`), and the CSV output's `aktiflik_oran` /
+`toplam_window` fields changed accordingly.
+
 ### A documented (not fixed) limitation: `gruplu_analiz.py`'s automatic grouping
 
-This is **not** counted among the three fixes above, because it is not a
+This is **not** counted among the fixes above, because it is not a
 bug in the sense of "produces a wrong answer where a right answer was
 expected" — it is a design choice with a real, demonstrated failure mode,
 and fixing it properly would require adding genuine genotype/age metadata
@@ -307,8 +525,10 @@ python3 v6_3/test_organoid_metrics.py   # should print 15/15 passed
 ```
 
 Nothing about how you invoke Axon has changed. Every command that worked
-before this update works identically now, with the three corrected
-behaviors described above.
+before this update works identically now, with the corrected behaviors
+described in §1.3 — including `python3 v6_3/organoid.py analiz <file.nwb>
+<organoid> <kayit>`, the single-file entry point that Fixes 4–8 repaired
+and that previously could not complete a run at all.
 
 ---
 
@@ -611,6 +831,14 @@ development process, not a treatment in itself.
 | `v6_3/test_organoid_metrics.py` (original Axon suite, post bug-fix) | 15/15 |
 | `tests/test_tbl1xr1_pipeline.py` | 11/11 |
 | `tests/test_tbl1xr1_pipeline_entegrasyon.py` | 6/6 |
+
+None of these three suites exercise `organoid.py`'s single-file entry point
+directly, so Fixes 4–8 (§1.3, Round 2) were additionally verified outside
+this table: by a standalone script that reproduces each bug against a
+synthetic NWB file before and after the fix, and by an actual
+`python3 v6_3/organoid.py analiz <synthetic.nwb> ORG1 REC1` run, which now
+completes end to end and prints a correctly populated report (previously
+it crashed immediately).
 
 ## 2.9 Usage
 
